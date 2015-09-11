@@ -1,0 +1,8 @@
+[Unit]
+Description=Background backups
+
+[Service]
+ExecStart=/usr/local/bin/background-backup
+
+[Install]
+WantedBy=basic.target

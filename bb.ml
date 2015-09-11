@@ -6,6 +6,7 @@ let rev = 1
 
 let backup_server = "salpiglossis"
 let backup_port = 22
+let backup_uid = 1000
 let backup_cmd =
   [| "rdiff-backup"; "/home/armael"; "data@salpiglossis::/pool/armael/Backups/hummingbird" |]
 
@@ -44,7 +45,7 @@ let has_internet () =
 let launch_backup () =
   match Unix.fork () with
   | 0 ->
-    Unix.setsid () |> ignore;
+    Unix.setuid backup_uid;
     Unix.execvp backup_cmd.(0) backup_cmd
   | pid ->
     pid
@@ -67,16 +68,13 @@ let main () =
                                      (delay_min / 60)
                                      (delay_min - 60 * (delay_min / 60)));
     ) else (
-      Syslog.syslog log `LOG_INFO "Previous backup isn't old enough or unreachable server.";
+      if not (has_internet ()) then (
+        Syslog.syslog log `LOG_INFO "Backup server is unreachable."
+      ) else (
+        Syslog.syslog log `LOG_INFO "Previous backup is recent."
+      );
       Unix.sleep polling_interval
     )
   done
 
-let die _ =
-  Syslog.closelog log
-
-let () =
-  List.iter (flip Sys.set_signal (Sys.Signal_handle die))
-    Sys.[sigint; sigkill; sigquit; sigterm; sigstop]
-  
 let () = main ()
